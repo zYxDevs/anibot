@@ -15,8 +15,6 @@ LOG_CHANNEL_ID = int(os.environ.get("LOG_CHANNEL_ID"))
 OWNER = list(filter(lambda x: x, map(int, os.environ.get("OWNER_ID", "1005170481 804248372 1993696756").split())))  ## sudos can be included
 
 DOWN_PATH = "anibot/downloads/"
-HELP_DICT = dict()
-
 session = ClientSession()
 plugins = dict(root="anibot/plugins")
 anibot = Client("anibot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH, plugins=plugins)
@@ -26,7 +24,8 @@ if os.environ.get('USER_SESSION'):
     has_user: bool = True
     user = Client(os.environ.get('USER_SESSION'), api_id=API_ID, api_hash=API_HASH)
 
-HELP_DICT['Group'] = '''
+HELP_DICT = {
+    'Group': '''
 Group based commands:
 
 /settings - Toggle stuff like whether to allow 18+ stuff in group or whether to notify about aired animes, etc and change UI
@@ -38,9 +37,8 @@ Group based commands:
 `/enable anime anilist me user`
 
 /disabled - List out disabled cmds
-'''
-
-HELP_DICT["Additional"] = """Use /reverse cmd to get reverse search via tracemoepy API
+''',
+    "Additional": """Use /reverse cmd to get reverse search via tracemoepy API
 __Note: This works best on uncropped anime pic,
 when used on cropped media, you may get result but it might not be too reliable__
 
@@ -51,9 +49,8 @@ Use /watch cmd to get watch order of searched anime
 Use /fillers cmd to get a list of fillers for an anime
 
 Use /quote cmd to get a random quote
-"""
-
-HELP_DICT["Anilist"] = """
+""",
+    "Anilist": """
 Below is the list of basic anilist cmds for info on anime, character, manga, etc.
 
 /anime - Use this cmd to get info on specific anime using keywords (anime name) or Anilist ID
@@ -75,9 +72,8 @@ Below is the list of basic anilist cmds for info on anime, character, manga, etc
 /user - Use this cmd to get info on an anilist user
 
 /browse - Use this cmd to get updates about latest animes
-"""
-
-HELP_DICT["Oauth"] = """
+""",
+    "Oauth": """
 This includes advanced anilist features
 
 Use /auth or !auth cmd to get details on how to authorize your Anilist account with bot
@@ -96,4 +92,5 @@ Use /me or !me cmd to get your anilist recent activity
 Can also use /activity or !activity
 
 Use /favourites or !favourites cmd to get your anilist favourites
-"""
+""",
+}

@@ -76,7 +76,10 @@ async def trace_bek(client: anibot, message: Message, mdata: dict):
             caption=caption_
             button.append([InlineKeyboardButton("More Info", url=f"https://anilist.co/anime/{result['anilist']['id']}")])
         button.append([InlineKeyboardButton("Next", callback_data=f"tracech_1_{dls_js}_{mdata['from_user']['id']}")])
-        await (message.reply_video if nsfw is False else message.reply_photo)(msg, caption=caption, reply_markup=InlineKeyboardMarkup(button))
+        await (message.reply_photo if nsfw else message.reply_video)(
+            msg, caption=caption, reply_markup=InlineKeyboardMarkup(button)
+        )
+
     else:
         await message.reply_text("Couldn't parse results!!!")
     await x.delete()
