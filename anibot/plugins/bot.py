@@ -77,7 +77,7 @@ async def en_dis__able_cmd(client: anibot, message: Message, mdata: dict):
             await asyncio.sleep(5)
             await x.delete()
             return
-        enable = False if not 'enable' in cmd[0] else True
+        enable = 'enable' in cmd[0]
         if set(cmd[1].split()).issubset(CMD):
             find_gc = await DC.find_one({'_id': gid})
             if find_gc is None:
@@ -88,9 +88,6 @@ async def en_dis__able_cmd(client: anibot, message: Message, mdata: dict):
                     return
                 await DC.insert_one({'_id': gid, 'cmd_list': cmd[1]})
                 x = await message.reply_text("Command disabled!!!")
-                await asyncio.sleep(5)
-                await x.delete()
-                return
             else:
                 ocls: str = find_gc['cmd_list']
                 if set(cmd[1].split()).issubset(ocls.split()):
@@ -110,24 +107,23 @@ async def en_dis__able_cmd(client: anibot, message: Message, mdata: dict):
                         await asyncio.sleep(5)
                         await x.delete()
                         return
+                elif enable:
+                    x = await message.reply_text('Command already enabled!!!')
+                    await asyncio.sleep(5)
+                    await x.delete()
+                    return
                 else:
-                    if enable:
-                        x = await message.reply_text('Command already enabled!!!')
-                        await asyncio.sleep(5)
-                        await x.delete()
-                        return
-                    else:
-                        lsncls = []
-                        prencls = (ocls+' '+cmd[1]).replace('  ', ' ')
-                        for i in prencls.split():
-                            if i not in lsncls:
-                                lsncls.append(i)
-                        ncls = " ".join(lsncls)
+                    prencls = f'{ocls} {cmd[1]}'.replace('  ', ' ')
+                    lsncls = []
+                    for i in prencls.split():
+                        if i not in lsncls:
+                            lsncls.append(i)
+                    ncls = " ".join(lsncls)
                 await DC.update_one({'_id': gid}, {'$set': {'cmd_list': ncls}})
-                x = await message.reply_text(f"Command {'dis' if enable is False else 'en'}abled!!!")
-                await asyncio.sleep(5)
-                await x.delete()
-                return
+                x = await message.reply_text(f"Command {'en' if enable else 'dis'}abled!!!")
+            await asyncio.sleep(5)
+            await x.delete()
+            return
         else:
             await message.reply_text("Hee, is that a command?!")
 
@@ -251,7 +247,7 @@ async def start_(client: anibot, message: Message, mdata: dict):
         return
     bot = await client.get_me()
     if gid==user:
-        if not (user in OWNER) and not (await USERS.find_one({"id": user})):
+        if user not in OWNER and not (await USERS.find_one({"id": user})):
             try:
                 usertitle = mdata['from_user']['username']
             except KeyError:
@@ -275,9 +271,7 @@ async def start_(client: anibot, message: Message, mdata: dict):
                 await client.send_message(user, result.replace("~!", "").replace("!~", ""))
                 return
             if deep_cmd.split("_")[0]=="anime":
-                auth = False
-                if (await AUTH_USERS.find_one({"id": user})):
-                    auth = True
+                auth = bool((await AUTH_USERS.find_one({"id": user})))
                 result = await get_anime({"id": int(deep_cmd.split("_")[1])}, user=user, auth=auth)
                 pic, msg = result[0], result[1]
                 buttons = get_btns("ANIME", result=result, user=user, auth=auth)
@@ -347,15 +341,14 @@ Use /feedback cmd to contact bot owner'''
 
 Apart from above shown cmds"""
         )
+    elif gid==id_:
+        await client.send_message(gid, text=text, reply_markup=buttons)
     else:
-        if gid==id_:
-            await client.send_message(gid, text=text, reply_markup=buttons)
-        else:
-            await client.send_message(
-                gid,
-                text="Click below button for bot help",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Help", url=f"https://t.me/{bot_us}/?start=help")]])
-            )
+        await client.send_message(
+            gid,
+            text="Click below button for bot help",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Help", url=f"https://t.me/{bot_us}/?start=help")]])
+        )
 
 
 @anibot.on_callback_query(filters.regex(pattern=r"help_(.*)"))
@@ -456,9 +449,7 @@ async def feed_(client: anibot, message: Message, mdata: dict):
 async def eval_(client: anibot, message: Message, mdata: dict):
     status_message = await message.reply_text("Processing ...")
     cmd = message.text.split(" ", maxsplit=1)[1]
-    reply_to_ = message
-    if message.reply_to_message:
-        reply_to_ = message.reply_to_message
+    reply_to_ = message.reply_to_message or message
     old_stderr = sys.stderr
     old_stdout = sys.stdout
     redirected_output = sys.stdout = io.StringIO()
@@ -532,7 +523,7 @@ async def terminal(client: anibot, message: Message, mdata: dict):
                     ),
                     parse_mode="markdown",
                 )
-            output += "**{}**\n".format(code)
+            output += f"**{code}**\n"
             output += process.stdout.read()[:-1].decode("utf-8")
             output += "\n"
     else:
@@ -549,9 +540,10 @@ async def terminal(client: anibot, message: Message, mdata: dict):
                 etype=exc_type, value=exc_obj, tb=exc_tb
             )
             await message.reply_text(
-                """**Error:**\n```{}```""".format("".join(errors)),
+                f"""**Error:**\n```{"".join(errors)}```""",
                 parse_mode="markdown",
             )
+
             return
         output = process.stdout.read()[:-1].decode("utf-8")
     if str(output) == "\n":

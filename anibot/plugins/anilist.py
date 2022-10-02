@@ -64,12 +64,10 @@ async def anime_cmd(client: Client, message: Message, mdata: dict):
         await asyncio.sleep(5)
         return await k.delete()
     query = text[1]
-    auth = False
     vars_ = {"search": query}
     if query.isdigit():
         vars_ = {"id": int(query)}
-    if (await AUTH_USERS.find_one({"id": user})):
-        auth = True
+    auth = bool((await AUTH_USERS.find_one({"id": user})))
     result = await get_anime(vars_, user=user, auth=auth, cid=gid if gid!=user else None)
     if len(result) != 1:
         title_img, finals_ = result[0], result[1]
@@ -111,9 +109,7 @@ async def manga_cmd(client: Client, message: Message, mdata: dict):
     query = text[1]
     qdb = rand_key()
     MANGA_DB[qdb] = query
-    auth = False
-    if (await AUTH_USERS.find_one({"id": user})):
-        auth = True
+    auth = bool((await AUTH_USERS.find_one({"id": user})))
     result = await get_manga(qdb, 1, auth=auth, user=user, cid=gid if gid!=user else None)
     if len(result) == 1:
         k = await message.reply_text(result[0])
@@ -155,9 +151,7 @@ async def character_cmd(client: Client, message: Message, mdata: dict):
     query = text[1]
     qdb = rand_key()
     CHAR_DB[qdb]=query
-    auth = False
-    if (await AUTH_USERS.find_one({"id": user})):
-        auth = True
+    auth = bool((await AUTH_USERS.find_one({"id": user})))
     result = await get_character(qdb, 1, auth=auth, user=user)
     if len(result) == 1:
         k = await message.reply_text(result[0])
@@ -185,9 +179,7 @@ async def anilist_cmd(client: Client, message: Message, mdata: dict):
     query = text[1]
     qdb = rand_key()
     ANIME_DB[qdb] = query
-    auth = False
-    if (await AUTH_USERS.find_one({"id": user})):
-        auth = True
+    auth = bool((await AUTH_USERS.find_one({"id": user})))
     result = await get_anilist(qdb, 1, auth=auth, user=user, cid=gid if gid!=user else None)
     if len(result) == 1:
         k = await message.reply_text(result[0])
@@ -214,7 +206,7 @@ async def flex_cmd(client: Client, message: Message, mdata: dict):
     if "user" in query[0]:
         if find_gc is not None and 'user' in find_gc['cmd_list'].split():
             return
-        if not len(query)==2:
+        if len(query) != 2:
             k = await message.reply_text("Please give an anilist username to search about\nexample: /user Lostb053")
             await asyncio.sleep(5)
             return await k.delete()
@@ -223,7 +215,9 @@ async def flex_cmd(client: Client, message: Message, mdata: dict):
     if find_gc is not None and 'flex' in find_gc['cmd_list'].split():
         return
     user = mdata['from_user']['id']
-    if not "user" in query[0] and not (await AUTH_USERS.find_one({"id": user})):
+    if "user" not in query[0] and not (
+        await AUTH_USERS.find_one({"id": user})
+    ):
         return await message.reply_text(
             "Please connect your account first to use this cmd",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Auth", url=f"https://t.me/{BOT_NAME.replace('@', '')}/?start=auth")]])
@@ -245,9 +239,7 @@ async def top_tags_cmd(client: Client, message: Message, mdata: dict):
     find_gc = await DC.find_one({'_id': gid})
     if find_gc is not None and 'top' in find_gc['cmd_list'].split():
         return
-    get_tag = "None"
-    if len(query)==2:
-        get_tag = query[1]
+    get_tag = query[1] if len(query)==2 else "None"
     user = mdata['from_user']['id']
     result = await get_top_animes(get_tag, 1, user)
     if len(result) == 1:
@@ -276,10 +268,8 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
     query = text[1]
     qdb = rand_key()
     AIRING_DB[qdb] = query
-    auth = False
     user = mdata['from_user']['id']
-    if (await AUTH_USERS.find_one({"id": user})):
-        auth = True
+    auth = bool((await AUTH_USERS.find_one({"id": user})))
     result = await get_airing(qdb, 1, auth=auth, user=user)
     if len(result) == 1:
         k = await message.reply_text(result[0])
@@ -292,11 +282,7 @@ async def airing_cmd(client: Client, message: Message, mdata: dict):
         await client.send_photo(gid, no_pic[random.randint(0, 4)], caption="This anime is marked 18+ and not allowed in this group", reply_markup=btn)
         return
     await client.send_photo(gid, coverImg, caption=out, reply_markup=btn)
-    update = True
-    for i in PIC_LS:
-        if coverImg in i:
-            update = False
-            break
+    update = all(coverImg not in i for i in PIC_LS)
     if update:
         PIC_LS.append(coverImg)
 
@@ -309,12 +295,15 @@ async def auth_link_cmd(client, message: Message, mdata: dict):
     except KeyError:
         user = 00000000
     if mdata['chat']['id']==user:
-        text = "Click the below button to authorize yourself"
-        if not os.environ.get('ANILIST_REDIRECT_URL'):
-            text = """Follow the steps to complete Authorization:
+        text = (
+            "Click the below button to authorize yourself"
+            if os.environ.get('ANILIST_REDIRECT_URL')
+            else """Follow the steps to complete Authorization:
 1. Click the below button
 2. Authorize the app and copy the authorization code
 3. Send the code along with cmd /code like '/code <u>auth code from website</u>'"""
+        )
+
         await message.reply_text(
             text = text,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
@@ -356,9 +345,7 @@ async def sfw_cmd(client: Client, message: Message, mdata: dict):
         sp = "Subsplease Updates: OFF"
         if await (SG.find_one({"_id": cid})):
             sp = "Subsplease Updates: ON"
-        hd = "Headlines: OFF"
-        if await (HD.find_one({"_id": cid})):
-            hd = "Headlines: ON"
+        hd = "Headlines: ON" if await (HD.find_one({"_id": cid})) else "Headlines: OFF"
         await message.reply_text(
             text = setting_text,
             reply_markup=InlineKeyboardMarkup([
@@ -548,9 +535,8 @@ async def page_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.edit_message_media(InputMediaPhoto(no_pic[random.randint(0, 4)], caption="This material is marked 18+ and not allowed in this group"), reply_markup=button)
         return
     await cq.edit_message_media(InputMediaPhoto(pic, caption=msg), reply_markup=button)
-    if media!="CHARACTER":
-        if pic not in PIC_LS:
-            PIC_LS.append(pic)
+    if media != "CHARACTER" and pic not in PIC_LS:
+        PIC_LS.append(pic)
 
 
 @anibot.on_callback_query(filters.regex(pattern=r"btn_(.*)"))
@@ -892,8 +878,8 @@ async def additional_info_btn(client: Client, cq: CallbackQuery, cdata: dict):
         await cq.answer('No description available!!!')
         return
     if len(result) > 1000:
-        result = result[:940] + "..."
-        if spoiler is False:
+        result = f"{result[:940]}..."
+        if not spoiler:
             result += "\n\nFor more info click below given button"
             button.append([InlineKeyboardButton(text="More Info", url=f"https://t.me/{bot}/?start=des_{ctgry}_{query}_{kek}")])
     add_ = ""
@@ -930,9 +916,9 @@ async def featured_in_btn(client: Client, cq: CallbackQuery, cdata: dict):
     if result[0] is False:
         result = await get_featured_in_lists(int(idm), "MAN")
         req = None
-        if result[0] is False:
-            await cq.answer("No Data Available!!!")
-            return
+    if result[0] is False:
+        await cq.answer("No Data Available!!!")
+        return
     [msg, total], pic = result
     button = []
     totalpg, kek = divmod(total, 15)
@@ -973,8 +959,23 @@ async def featured_in_switch_btn(client: Client, cq: CallbackQuery, cdata: dict)
                     InlineKeyboardButton(text="Next", callback_data=f"{req}_{idm}_{int(reqpg)+1}_{qry}_{pg}_{auth}_{user}")
                 ]
             )
-    button.append([InlineKeyboardButton(text=f"{bt}", callback_data=f"{reqb}_{idm}_0_{qry}_{pg}_{auth}_{user}")])
-    button.append([InlineKeyboardButton(text="Back", callback_data=f"page_CHARACTER_{qry}_{pg}_{auth}_{user}")])
+    button.extend(
+        (
+            [
+                InlineKeyboardButton(
+                    text=f"{bt}",
+                    callback_data=f"{reqb}_{idm}_0_{qry}_{pg}_{auth}_{user}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Back",
+                    callback_data=f"page_CHARACTER_{qry}_{pg}_{auth}_{user}",
+                )
+            ],
+        )
+    )
+
     await cq.edit_message_media(InputMediaPhoto(pic, caption=msg), reply_markup=InlineKeyboardMarkup(button))
 
 
@@ -999,9 +1000,25 @@ async def change_ui_btn(client: Client, cq: CallbackQuery):
         if len(row)==3:
             btn.append(row)
             row = []
-    btn.append(row)
-    btn.append([InlineKeyboardButton(text="Caps", callback_data=f"cui_Caps_{gid}"), InlineKeyboardButton("UPPER", callback_data=f"cui_UPPER_{gid}")])
-    btn.append([InlineKeyboardButton(text="Back", callback_data=f"settogl_call_{gid}")])
+    btn.extend(
+        (
+            row,
+            [
+                InlineKeyboardButton(
+                    text="Caps", callback_data=f"cui_Caps_{gid}"
+                ),
+                InlineKeyboardButton(
+                    "UPPER", callback_data=f"cui_UPPER_{gid}"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Back", callback_data=f"settogl_call_{gid}"
+                )
+            ],
+        )
+    )
+
     if qry[1] in ["Caps", "UPPER"]:
         if await GUI.find_one({"_id": gid}):
             await GUI.update_one({"_id": gid}, {"$set" : {"cs": qry[1]}})
